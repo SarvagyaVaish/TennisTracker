@@ -1,6 +1,7 @@
 # import the necessary packages
 from picamera.array import PiRGBArray
 from picamera import PiCamera
+import numpy as np
 import time
 import cv2
  
@@ -10,7 +11,10 @@ camera.resolution = (640, 480)
 camera.framerate = 32
 rawCapture = PiRGBArray(camera, size=(640, 480))
 scale = 0.5
-average_center = [-1, -1]
+
+target_center = [0, 0]
+target_history = []
+TARGET_SMOOTHING_WINDOW = 5
  
 # allow the camera to warmup
 time.sleep(0.1)
@@ -26,10 +30,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	#
 	
 	# Resize
-	image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+	orig_image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
 
 	# Grayscale
-	image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	image = cv2.cvtColor(orig_image, cv2.COLOR_BGR2GRAY)
 
 	# Smooth
 	image = cv2.GaussianBlur(image, (5, 5), 0)
@@ -40,23 +44,30 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 								param1=50, param2=60, minRadius=0, maxRadius=0)
 
 	# Find average center of all detected circles
+	current_target_center = target_center
 	if circles != None:
-		average_center[0] = 0
-		average_center[1] = 0
+		current_target_center[0] = 0.
+		current_target_center[1] = 0.
 		for i in circles[0, :]:
-			average_center[0] += i[0]
-			average_center[1] += i[1]
+			current_target_center[0] += i[0]
+			current_target_center[1] += i[1]
 			# cv2.circle(frame, (i[0], i[1]), i[2], (0, 255, 0), 2)
 			# cv2.circle(frame, (i[0], i[1]), 2, (0, 0, 255), 3)
 
-		average_center[0] /= len(circles[0, :])
-		average_center[1] /= len(circles[0, :])
+		current_target_center[0] /= len(circles[0, :])
+		current_target_center[1] /= len(circles[0, :])
 
-	if average_center[0] != -1:
-		cv2.circle(image, (int(average_center[0]), int(average_center[1])), 2, (0, 0, 255), 3)
+	# Smooth target location
+	target_history.append(current_target_center)
+	while len(target_history) > TARGET_SMOOTHING_WINDOW:
+		target_history.pop(0)
+
+	target_center = np.mean(np.array(target_history), 0)
+
+	cv2.circle(orig_image, (int(target_center[0]), int(target_center[1])), 2, (0, 0, 255), 3)
 
 	# show the frame
-	cv2.imshow("Frame", image)
+	cv2.imshow("Frame", orig_image)
 	key = cv2.waitKey(1) & 0xFF
  
 	# clear the stream in preparation for the next frame
