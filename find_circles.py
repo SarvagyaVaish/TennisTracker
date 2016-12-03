@@ -1,13 +1,27 @@
+from __future__ import division
 # import the necessary packages
 from picamera.array import PiRGBArray
 from picamera import PiCamera
 import numpy as np
 import time
 import cv2
+import Adafruit_PCA9685
 
 
 TARGET_SMOOTHING_WINDOW = 5
 SCALE = 0.5
+
+
+# Servo setup
+pwm = Adafruit_PCA9685.PCA9685()
+servo_min = 150  # Min pulse length out of 4096
+servo_max = 600  # Max pulse length out of 4096
+pwm.set_pwm_freq(60) # Set frequency to 60hz, good for servos.
+
+
+def set_servo_position(position):
+    global pwm, servo_min, servo_max
+    pwm.set_pwm(14, 0, int((servo_min + servo_max) / 2))
 
 
 def find_target(image):
@@ -55,12 +69,16 @@ if __name__ == '__main__':
 
     # capture frames from the camera
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        #
         # Grab the raw NumPy array representing the image
+        #
         orig_image = frame.array
         orig_image = cv2.resize(orig_image, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_CUBIC)
         rows, cols, _ = np.shape(orig_image)
 
+        #
         # Process the image to find target
+        #
         new_target = find_target(orig_image)
 
         # Use last known location if target not found
@@ -75,10 +93,15 @@ if __name__ == '__main__':
         target_center = np.mean(np.array(target_history), 0)
         
         cte = target_center[0] - cols / 2.
-        print cte
 
+        #
+        # Control Servo
+        #
+        set_servo_position(50)
 
+        #
         # Visualize
+        #
         cv2.circle(orig_image, (int(target_center[0]), int(target_center[1])), 2, (0, 0, 255), 3)
         cv2.imshow("Frame", orig_image)
         key = cv2.waitKey(1) & 0xFF
