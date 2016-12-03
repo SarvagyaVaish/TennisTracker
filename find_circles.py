@@ -72,6 +72,7 @@ if __name__ == '__main__':
 
     # capture frames from the camera
     iter_count = 0
+    t1 = time.time()
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
         #
         # Grab the raw NumPy array representing the image
@@ -119,4 +120,7 @@ if __name__ == '__main__':
             break
 
         iter_count += 1
+
+    t2 = time.time()
+    print (t2 - t1) / iter_count
 
