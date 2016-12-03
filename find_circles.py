@@ -65,6 +65,10 @@ if __name__ == '__main__':
     # target location
     target_center = [0, 0]
     target_history = []
+    no_target_count = 0
+    sweep_mode = True
+    sweep_direction = -1
+    sweep_speed = 20
 
     # servo target | PID params
     servo_target = (servo_min + servo_max) / 2.
@@ -89,20 +93,37 @@ if __name__ == '__main__':
         # Use last known location if target not found
         if new_target[0] == -1:
             new_target = list(target_center)
+            no_target_count += 1
+            # Go into sweep mode if we are missing target for a while
+            if no_target_count > 5:
+                sweep_mode = True
+        else:
+            no_target_count = 0
+            sweep_mode = False
 
-        # Smooth target location
-        target_history.append(new_target)
-        while len(target_history) > TARGET_SMOOTHING_WINDOW:
-            target_history.pop(0)
+        # Sweep
+        if sweep_mode:
+            servo_target += sweep_direction * sweep_speed
+            if servo_target < servo_min or servo_target > servo_max:
+                sweep_direction *= -1
 
-        target_center = np.mean(np.array(target_history), 0)
-        
-        cte = target_center[0] - cols / 2.
+        # Use PID to center target
+        else:
+            # Smooth target location
+            target_history.append(new_target)
+            while len(target_history) > TARGET_SMOOTHING_WINDOW:
+                target_history.pop(0)
+
+            target_center = np.mean(np.array(target_history), 0)
+            
+            cte = target_center[0] - cols / 2.
+            servo_target += pid_p * cte
+            servo_target = min(servo_target, servo_max)
+            servo_target = max(servo_target, servo_min)
 
         #
         # Control Servo
         #
-        servo_target += pid_p * cte
         set_servo_position(servo_target)
 
         #
