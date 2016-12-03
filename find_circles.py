@@ -8,7 +8,7 @@ import cv2
 import Adafruit_PCA9685
 
 
-TARGET_SMOOTHING_WINDOW = 5
+TARGET_SMOOTHING_WINDOW = 3
 SCALE = 0.5
 
 
@@ -59,20 +59,27 @@ if __name__ == '__main__':
     camera.framerate = 32
     rawCapture = PiRGBArray(camera, size=(640, 480))
 
-    # allow the camera to warmup
-    time.sleep(0.1)
-
     # target location
     target_center = [0, 0]
     target_history = []
     no_target_count = 0
     sweep_mode = True
-    sweep_direction = -1
-    sweep_speed = 20
+    sweep_direction = 1
+    sweep_speed = 10
 
     # servo target | PID params
-    servo_target = (servo_min + servo_max) / 2.
-    pid_p = -0.08
+    servo_target = (servo_min * 2. + servo_max) / 3.
+    servo_target = servo_min
+    pid_p = 0.2
+    pid_d = 0.0
+    pid_i = 0.0
+    cte = 0.
+    cte_int = 0.
+
+    set_servo_position(servo_target)
+
+    # allow the camera to warmup
+    time.sleep(1.)
 
     # capture frames from the camera
     iter_count = 0
@@ -116,8 +123,12 @@ if __name__ == '__main__':
 
             target_center = np.mean(np.array(target_history), 0)
             
-            cte = target_center[0] - cols / 2.
-            servo_target += pid_p * cte
+            curr_cte = target_center[0] - cols / 2.
+            cte_diff = curr_cte - cte
+            cte = curr_cte
+            cte_int += curr_cte
+
+            servo_target -= (pid_p * cte  +  pid_d * cte_diff  +  pid_i * cte_int)
             servo_target = min(servo_target, servo_max)
             servo_target = max(servo_target, servo_min)
 
