@@ -20,8 +20,7 @@ pwm.set_pwm_freq(60) # Set frequency to 60hz, good for servos.
 
 
 def set_servo_position(position):
-    global pwm, servo_min, servo_max
-    pwm.set_pwm(14, 0, int((servo_min + servo_max) / 2))
+    pwm.set_pwm(14, 0, int(position))
 
 
 def find_target(image):
@@ -67,7 +66,12 @@ if __name__ == '__main__':
     target_center = [0, 0]
     target_history = []
 
+    # servo target | PID params
+    servo_target = (servo_min + servo_max) / 2.
+    pid_p = -0.08
+
     # capture frames from the camera
+    iter_count = 0
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
         #
         # Grab the raw NumPy array representing the image
@@ -97,7 +101,8 @@ if __name__ == '__main__':
         #
         # Control Servo
         #
-        set_servo_position(50)
+        servo_target += pid_p * cte
+        set_servo_position(servo_target)
 
         #
         # Visualize
@@ -112,4 +117,6 @@ if __name__ == '__main__':
         # if the `q` key was pressed, break from the loop
         if key == ord("q"):
             break
+
+        iter_count += 1
 
