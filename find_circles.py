@@ -65,13 +65,12 @@ if __name__ == '__main__':
     no_target_count = 0
     sweep_mode = True
     sweep_direction = 1
-    sweep_speed = 10
+    sweep_speed = 5
 
     # servo target | PID params
-    servo_target = (servo_min * 2. + servo_max) / 3.
     servo_target = servo_min
-    pid_p = 0.2
-    pid_d = 0.0
+    pid_p = 0.12
+    pid_d = 0.22
     pid_i = 0.0
     cte = 0.
     cte_int = 0.
@@ -128,7 +127,9 @@ if __name__ == '__main__':
             cte = curr_cte
             cte_int += curr_cte
 
-            servo_target -= (pid_p * cte  +  pid_d * cte_diff  +  pid_i * cte_int)
+            delta = pid_p * cte  +  pid_d * cte_diff  +  pid_i * cte_int
+            servo_target -= delta
+
             servo_target = min(servo_target, servo_max)
             servo_target = max(servo_target, servo_min)
 
@@ -140,14 +141,17 @@ if __name__ == '__main__':
         #
         # Visualize
         #
-        cv2.circle(orig_image, (int(target_center[0]), int(target_center[1])), 2, (0, 0, 255), 3)
+        if not sweep_mode:
+            cv2.circle(orig_image, (int(target_center[0]), int(target_center[1])), 2, (0, 0, 255), 3)
         cv2.imshow("Frame", orig_image)
+        cv2.imwrite("images/i" + str(iter_count).zfill(3) +".jpg", orig_image);
         key = cv2.waitKey(1) & 0xFF
 
         # clear the stream in preparation for the next frame
         rawCapture.truncate(0)
 
         # if the `q` key was pressed, break from the loop
+        #if key == ord("q") or iter_count == 150:
         if key == ord("q"):
             break
 
@@ -155,4 +159,5 @@ if __name__ == '__main__':
 
     t2 = time.time()
     print (t2 - t1) / iter_count
+    print iter_count
 
