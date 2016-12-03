@@ -58,6 +58,7 @@ if __name__ == '__main__':
         # Grab the raw NumPy array representing the image
         orig_image = frame.array
         orig_image = cv2.resize(orig_image, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_CUBIC)
+        rows, cols, _ = np.shape(orig_image)
 
         # Process the image to find target
         new_target = find_target(orig_image)
@@ -72,6 +73,9 @@ if __name__ == '__main__':
             target_history.pop(0)
 
         target_center = np.mean(np.array(target_history), 0)
+        
+        cte = target_center[0] - cols / 2.
+        print cte
 
 
         # Visualize
